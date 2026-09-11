@@ -19,6 +19,7 @@ AIHelper는 Kotlin Multiplatform 기반의 AI 도우미 서비스입니다. 하�
 - `app:webApp`: Web 애플리케이션의 진입점
 - `app:shared`: 공유 UI와 프레젠테이션 로직
 - `core`: 플랫폼에 독립적인 공통 비즈니스 로직
+- `designsystem`: 공유 디자인 토큰, 테마와 재사용 가능한 Compose UI 컴포넌트
 - `server`: Ktor 서버와 외부 요청을 처리하는 진입점
 
 ## 아키텍처 원칙

@@ -30,4 +30,5 @@ dependencyResolutionManagement {
 include(":app:shared")
 include(":app:webApp")
 include(":core")
+include(":designsystem")
 include(":server")

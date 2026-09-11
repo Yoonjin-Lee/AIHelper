@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="프로젝트를 분석해 AI 개발환경을 진단하고, 필요한 설정을 만들고, 효과를 검증합니다.">
+  <title>Agent Setup Builder — Prototype</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23101a2e'/%3E%3Cpath d='M9 10h14M9 16h9M9 22h14' stroke='%237cffb2' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #101828;
+      --muted: #667085;
+      --line: #d9dfe8;
+      --soft-line: #e9edf3;
+      --paper: #f5f7fb;
+      --surface: #ffffff;
+      --navy: #101a2e;
+      --navy-2: #18243c;
+      --blue: #3157e6;
+      --blue-soft: #eef2ff;
+      --mint: #7cffb2;
+      --mint-soft: #eafff1;
+      --amber: #c96b16;
+      --amber-soft: #fff6e8;
+      --danger: #c43b4d;
+      --radius: 18px;
+      --shadow: 0 18px 50px rgba(16, 24, 40, .10);
+    }
+
+    * { box-sizing: border-box; }
+    html { font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-size: 16px; line-height: 1.55; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid rgba(49,87,230,.28); outline-offset: 3px; }
+    .hidden { display: none !important; }
+
+    .app-header {
+      height: 68px;
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--navy);
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 750; letter-spacing: -.02em; }
+    .brand-mark { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--mint); color: var(--navy); font: 800 16px/1 ui-monospace, SFMono-Regular, monospace; }
+    .prototype-tag { color: #bac4d6; font-size: .78rem; padding: 4px 8px; border: 1px solid #3b4860; border-radius: 999px; font-weight: 600; }
+    .header-action { color: #dfe5ef; background: transparent; border: 0; padding: 8px 4px; font-size: .9rem; }
+
+    .shell { min-height: calc(100vh - 68px); display: grid; grid-template-columns: 248px minmax(0, 1fr); }
+    .side {
+      padding: 30px 22px;
+      background: var(--navy);
+      color: white;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .step-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+    .step { color: #8e9aae; display: flex; align-items: center; gap: 11px; padding: 10px 11px; border-radius: 10px; font-size: .9rem; transition: .2s ease; }
+    .step-number { width: 25px; height: 25px; border: 1px solid #49556d; border-radius: 50%; display: grid; place-items: center; font-size: .75rem; font-weight: 700; }
+    .step.active { color: white; background: var(--navy-2); }
+    .step.active .step-number { color: var(--navy); background: var(--mint); border-color: var(--mint); }
+    .step.done { color: #d9e0ea; }
+    .step.done .step-number { color: var(--mint); border-color: var(--mint); }
+    .side-note { margin-top: 42px; padding: 15px; border: 1px solid #344058; border-radius: 13px; color: #aeb9cb; font-size: .8rem; }
+    .side-note strong { color: white; display: block; margin-bottom: 4px; font-size: .84rem; }
+
+    main { min-width: 0; }
+    .view { max-width: 1160px; margin: 0 auto; padding: 54px 44px 80px; animation: enter .28s ease both; }
+    @keyframes enter { from { opacity: 0; transform: translateY(8px); } }
+    .eyebrow { margin: 0 0 12px; color: var(--blue); font: 700 .78rem/1.2 ui-monospace, SFMono-Regular, monospace; text-transform: uppercase; letter-spacing: .12em; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 20px; max-width: 760px; font-size: clamp(2.3rem, 5vw, 4.75rem); line-height: 1.04; letter-spacing: -.065em; }
+    h2 { margin-bottom: 12px; font-size: clamp(1.65rem, 3vw, 2.5rem); line-height: 1.15; letter-spacing: -.045em; }
+    h3 { margin-bottom: 7px; font-size: 1.05rem; letter-spacing: -.02em; }
+    .lead { color: var(--muted); max-width: 650px; font-size: 1.1rem; }
+    .section-head { margin-bottom: 30px; display: flex; justify-content: space-between; align-items: end; gap: 24px; }
+
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(330px, .92fr); gap: 44px; align-items: center; min-height: calc(100vh - 202px); }
+    .pain-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 30px 0; }
+    .pain-pill { padding: 8px 11px; border-radius: 8px; background: #e9edf4; color: #4e596b; font-size: .84rem; }
+    .cta-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn { min-height: 46px; padding: 11px 17px; border: 1px solid transparent; border-radius: 11px; font-weight: 720; transition: transform .15s ease, box-shadow .15s ease, background .15s ease; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.primary { background: var(--blue); color: white; box-shadow: 0 9px 24px rgba(49,87,230,.22); }
+    .btn.primary:hover { background: #2749c9; }
+    .btn.secondary { background: var(--surface); border-color: var(--line); color: var(--ink); }
+    .btn.ghost { background: transparent; color: var(--muted); }
+    .btn.dark { background: var(--navy); color: white; }
+    .btn.small { min-height: 36px; padding: 7px 11px; font-size: .84rem; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .connect-card { padding: 25px; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); }
+    .connect-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .safe-badge { display: inline-flex; align-items: center; gap: 6px; color: #236640; background: var(--mint-soft); border-radius: 999px; padding: 5px 9px; font-size: .75rem; font-weight: 700; }
+    .input-wrap { display: flex; gap: 8px; padding: 7px; background: var(--paper); border: 1px solid var(--line); border-radius: 13px; }
+    .repo-input { min-width: 0; flex: 1; border: 0; background: transparent; padding: 6px 8px; color: var(--ink); }
+    .repo-input::placeholder { color: #99a2b1; }
+    .divider { margin: 20px 0; display: flex; align-items: center; gap: 12px; color: #9aa4b4; font-size: .77rem; }
+    .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--soft-line); }
+    .sample-card { width: 100%; display: flex; align-items: center; gap: 14px; padding: 14px; text-align: left; color: inherit; background: #fbfcfe; border: 1px solid var(--line); border-radius: 14px; }
+    .sample-card:hover { border-color: #a9b8ff; background: var(--blue-soft); }
+    .sample-icon { flex: 0 0 auto; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 10px; background: var(--navy); color: var(--mint); font-weight: 800; }
+    .sample-copy { flex: 1; }
+    .sample-copy strong { display: block; }
+    .sample-copy span { color: var(--muted); font-size: .79rem; }
+    .arrow { color: var(--blue); font-size: 1.25rem; }
+
+    .analysis-wrap { max-width: 720px; margin: 8vh auto 0; }
+    .scan-card { margin-top: 30px; padding: 26px; background: var(--navy); color: white; border-radius: 20px; box-shadow: var(--shadow); }
+    .scan-row { display: flex; align-items: center; gap: 13px; padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,.09); color: #aab5c7; }
+    .scan-row:last-child { border-bottom: 0; }
+    .scan-row.done { color: white; }
+    .scan-row.active { color: var(--mint); }
+    .scan-dot { width: 22px; height: 22px; border: 1px solid #56637a; border-radius: 50%; display: grid; place-items: center; font-size: .7rem; }
+    .scan-row.done .scan-dot { color: var(--navy); background: var(--mint); border-color: var(--mint); }
+    .scan-row.active .scan-dot { border-color: var(--mint); box-shadow: 0 0 0 4px rgba(124,255,178,.1); }
+    .progress-track { height: 6px; overflow: hidden; margin-top: 22px; background: #2b3850; border-radius: 999px; }
+    .progress-bar { height: 100%; width: 0; background: var(--mint); border-radius: inherit; transition: width .5s ease; }
+    .privacy-line { margin-top: 16px; color: #8794a8; font-size: .78rem; }
+
+    .diagnosis-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+    .score-card { padding: 26px; background: var(--navy); color: white; position: relative; overflow: hidden; }
+    .score-card::after { content: ""; position: absolute; width: 180px; height: 180px; right: -70px; top: -65px; border: 34px solid rgba(124,255,178,.09); border-radius: 50%; }
+    .score-label { color: #aeb8ca; font-size: .82rem; }
+    .score-number { margin: 10px 0 4px; font-size: 5.4rem; line-height: 1; letter-spacing: -.08em; font-weight: 760; }
+    .score-number span { color: #78869e; font-size: 1.3rem; letter-spacing: 0; }
+    .score-status { color: var(--mint); font-weight: 700; }
+    .score-caption { margin: 24px 0 0; color: #aeb8ca; font-size: .82rem; }
+    .dimension-card { margin-top: 15px; padding: 20px; }
+    .dimension { margin-bottom: 15px; }
+    .dimension:last-child { margin-bottom: 0; }
+    .dimension-head { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: .8rem; }
+    .mini-track { height: 6px; background: #e6eaf0; border-radius: 99px; overflow: hidden; }
+    .mini-track i { display: block; height: 100%; background: var(--blue); border-radius: inherit; }
+    .finding-list { display: grid; gap: 12px; }
+    .finding { padding: 20px; display: grid; grid-template-columns: 34px minmax(0,1fr) auto; gap: 13px; align-items: start; }
+    .finding-index { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; background: var(--amber-soft); color: var(--amber); font: 700 .77rem/1 ui-monospace, monospace; }
+    .finding p { margin-bottom: 10px; color: var(--muted); font-size: .86rem; }
+    .evidence { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 6px; background: var(--paper); color: #4f5b6d; font: .72rem/1.2 ui-monospace, SFMono-Regular, monospace; }
+    .confidence { color: #277249; font-size: .74rem; font-weight: 700; }
+
+    .choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .choice { min-height: 124px; padding: 18px; text-align: left; background: var(--surface); color: inherit; border: 1px solid var(--line); border-radius: 15px; position: relative; }
+    .choice:hover { border-color: #9cadff; }
+    .choice.selected { border: 2px solid var(--blue); padding: 17px; background: var(--blue-soft); }
+    .choice-check { position: absolute; right: 15px; top: 15px; width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid #bbc3cf; border-radius: 6px; color: transparent; background: white; }
+    .choice.selected .choice-check { color: white; border-color: var(--blue); background: var(--blue); }
+    .choice small { display: block; margin-bottom: 9px; color: var(--blue); font-weight: 730; }
+    .choice strong { display: block; max-width: 85%; font-size: 1rem; }
+    .choice p { margin: 7px 0 0; color: var(--muted); font-size: .82rem; }
+    .sticky-action { position: sticky; bottom: 20px; margin-top: 24px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: rgba(255,255,255,.94); border: 1px solid var(--line); border-radius: 15px; box-shadow: 0 10px 35px rgba(16,24,40,.13); backdrop-filter: blur(10px); }
+    .sticky-action p { margin: 0; color: var(--muted); font-size: .85rem; }
+
+    .recommendations { display: grid; gap: 12px; }
+    .recommendation { padding: 21px; display: grid; grid-template-columns: 44px minmax(0,1fr) auto; gap: 15px; align-items: start; }
+    .file-symbol { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 11px; color: var(--blue); background: var(--blue-soft); font: 800 .72rem/1 ui-monospace, monospace; }
+    .recommendation p { margin-bottom: 11px; color: var(--muted); font-size: .85rem; }
+    .rec-meta { display: flex; flex-wrap: wrap; gap: 7px; }
+    .rec-tag { padding: 5px 8px; border-radius: 6px; background: var(--paper); color: #505c6e; font-size: .72rem; }
+    .required { color: #2853d4; background: var(--blue-soft); font-size: .73rem; font-weight: 750; padding: 5px 9px; border-radius: 999px; }
+    .budget { margin-top: 16px; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; gap: 18px; background: var(--mint-soft); border-color: #bde8cd; }
+    .budget p { margin: 0; color: #3e6850; font-size: .82rem; }
+    .budget strong { color: #1d5b37; }
+
+    .workspace { height: min(670px, calc(100vh - 220px)); min-height: 520px; display: grid; grid-template-columns: 245px minmax(0,1fr); overflow: hidden; }
+    .file-tree { padding: 18px 13px; background: var(--navy); color: #bbc6d7; }
+    .tree-title { padding: 5px 9px 15px; color: #78869d; font-size: .7rem; text-transform: uppercase; letter-spacing: .13em; }
+    .tree-item { width: 100%; padding: 8px 9px; color: inherit; background: transparent; border: 0; border-radius: 7px; text-align: left; font: .76rem/1.35 ui-monospace, SFMono-Regular, monospace; }
+    .tree-item.active { color: var(--mint); background: #1e2b44; }
+    .tree-indent { padding-left: 25px; }
+    .editor { min-width: 0; display: flex; flex-direction: column; background: white; }
+    .editor-top { min-height: 52px; padding: 0 17px; border-bottom: 1px solid var(--soft-line); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .tabs { display: flex; gap: 4px; }
+    .tab { padding: 8px 11px; color: var(--muted); background: transparent; border: 0; border-radius: 7px; font-size: .78rem; font-weight: 700; }
+    .tab.active { color: var(--blue); background: var(--blue-soft); }
+    .file-reason { color: var(--muted); font-size: .72rem; }
+    .editor-body { overflow: auto; padding: 24px; }
+    pre { margin: 0; white-space: pre-wrap; word-break: break-word; font: .79rem/1.75 ui-monospace, SFMono-Regular, Menlo, monospace; color: #263247; }
+    .diff-add { display: block; margin: 0 -24px; padding: 0 24px; color: #17653a; background: #eafff1; }
+    .diff-meta { display: block; margin: 0 -24px; padding: 0 24px; color: #3157e6; background: #eef2ff; }
+
+    .test-stage { padding: 26px; background: var(--navy); color: white; border-radius: 22px; }
+    .test-task { padding: 16px 18px; margin-bottom: 22px; border: 1px solid #3b4860; border-radius: 12px; color: #dfe5ef; background: #17233a; }
+    .test-task small { display: block; margin-bottom: 5px; color: #7f8da4; }
+    .comparison { display: grid; grid-template-columns: 1fr 72px 1fr; gap: 12px; align-items: stretch; }
+    .result-panel { padding: 20px; border-radius: 15px; background: white; color: var(--ink); }
+    .result-panel.after { box-shadow: inset 0 0 0 2px var(--mint); }
+    .result-kicker { color: var(--muted); font-size: .75rem; font-weight: 750; }
+    .result-score { margin: 4px 0 16px; font-size: 3rem; line-height: 1; letter-spacing: -.06em; font-weight: 800; }
+    .result-score.good { color: #187747; }
+    .result-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; color: #546074; font-size: .8rem; }
+    .result-list li { display: flex; gap: 8px; }
+    .bad-mark { color: var(--danger); }
+    .good-mark { color: #1c8751; }
+    .comparison-arrow { display: grid; place-items: center; color: var(--mint); font-size: 2rem; }
+    .delta { margin-top: 18px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .delta-item { padding: 13px; background: #17233a; border: 1px solid #344159; border-radius: 11px; }
+    .delta-item span { display: block; color: #8996aa; font-size: .7rem; }
+    .delta-item strong { color: var(--mint); font-size: 1rem; }
+
+    .success { max-width: 750px; margin: 4vh auto 0; text-align: center; }
+    .success-mark { width: 78px; height: 78px; margin: 0 auto 22px; display: grid; place-items: center; border-radius: 23px; background: var(--mint); color: var(--navy); font-size: 2rem; font-weight: 900; transform: rotate(-3deg); }
+    .success-card { margin-top: 28px; padding: 24px; text-align: left; }
+    .command { padding: 17px; overflow: auto; border-radius: 11px; background: var(--navy); color: #dce5f2; font: .76rem/1.7 ui-monospace, SFMono-Regular, monospace; }
+    .safe-summary { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; margin-top: 15px; }
+    .safe-summary div { padding: 12px; border-radius: 9px; background: var(--paper); color: var(--muted); font-size: .74rem; }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .side { padding: 10px 16px; position: sticky; top: 68px; z-index: 15; overflow-x: auto; }
+      .step-list { display: flex; min-width: max-content; }
+      .step { padding: 8px; }
+      .step span:last-child, .side-note { display: none; }
+      .view { padding: 36px 20px 70px; }
+      .hero-grid { grid-template-columns: 1fr; min-height: auto; }
+      .diagnosis-grid { grid-template-columns: 1fr; }
+      .score-column { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .dimension-card { margin-top: 0; }
+      .workspace { grid-template-columns: 190px minmax(0,1fr); }
+    }
+
+    @media (max-width: 640px) {
+      .app-header { padding: 0 16px; }
+      .prototype-tag, .header-action { display: none; }
+      .hero-grid { gap: 26px; }
+      .choice-grid, .score-column { grid-template-columns: 1fr; }
+      .finding, .recommendation { grid-template-columns: 34px minmax(0,1fr); }
+      .finding .confidence, .recommendation .required { grid-column: 2; justify-self: start; }
+      .sticky-action { align-items: stretch; flex-direction: column; }
+      .workspace { height: auto; grid-template-columns: 1fr; }
+      .file-tree { max-height: 190px; overflow: auto; }
+      .editor { min-height: 480px; }
+      .comparison { grid-template-columns: 1fr; }
+      .comparison-arrow { transform: rotate(90deg); min-height: 40px; }
+      .delta, .safe-summary { grid-template-columns: 1fr 1fr; }
+      .section-head { align-items: start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand"><span class="brand-mark">A/</span> Agent Setup Builder <span class="prototype-tag">INTERACTIVE PROTOTYPE</span></div>
+    <button class="header-action" type="button" data-go="start">처음부터 보기</button>
+  </header>
+
+  <div class="shell">
+    <aside class="side" aria-label="설정 진행 단계">
+      <ol class="step-list">
+        <li class="step active" data-step="start"><span class="step-number">1</span><span>프로젝트 연결</span></li>
+        <li class="step" data-step="diagnosis"><span class="step-number">2</span><span>AI 협업 진단</span></li>
+        <li class="step" data-step="problems"><span class="step-number">3</span><span>문제 선택</span></li>
+        <li class="step" data-step="recommend"><span class="step-number">4</span><span>설정 추천</span></li>
+        <li class="step" data-step="review"><span class="step-number">5</span><span>내용 확인</span></li>
+        <li class="step" data-step="test"><span class="step-number">6</span><span>효과 검증</span></li>
+      </ol>
+      <div class="side-note"><strong>프로젝트 밖은 변경하지 않아요</strong>민감 파일은 분석에서 제외하고, 모든 변경은 적용 전에 보여드립니다.</div>
+    </aside>
+
+    <main>
+      <section class="view" data-view="start">
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow">Your agent's first day</p>
+            <h1>AI가 프로젝트에서 일하는 법을 알려주세요.</h1>
+            <p class="lead">저장소를 분석해 부족한 작업 규칙을 찾고, 필요한 설정만 만들어 실제 효과까지 검증합니다.</p>
+            <div class="pain-list" aria-label="해결할 수 있는 문제">
+              <span class="pain-pill">잘못된 모듈 수정</span>
+              <span class="pain-pill">반복되는 프로젝트 설명</span>
+              <span class="pain-pill">테스트 누락</span>
+            </div>
+            <div class="cta-row">
+              <button class="btn primary" type="button" data-analyze>샘플로 3분 체험</button>
+              <button class="btn ghost" type="button" data-focus-repo>내 저장소 분석하기 →</button>
+            </div>
+          </div>
+
+          <div class="connect-card" id="connect-card">
+            <div class="connect-card-top">
+              <strong>프로젝트 연결</strong>
+              <span class="safe-badge">◆ 민감 파일 제외</span>
+            </div>
+            <div class="input-wrap">
+              <input class="repo-input" id="repo-input" type="url" aria-label="공개 GitHub 저장소 URL" placeholder="https://github.com/owner/repository">
+              <button class="btn dark small" type="button" data-analyze>분석</button>
+            </div>
+            <div class="divider">또는</div>
+            <button class="sample-card" type="button" data-analyze>
+              <span class="sample-icon">Kt</span>
+              <span class="sample-copy"><strong>Commerce Android</strong><span>Kotlin · Compose · 멀티모듈 샘플</span></span>
+              <span class="arrow">→</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="view hidden" data-view="analysis" aria-live="polite">
+        <div class="analysis-wrap">
+          <p class="eyebrow">Repository scan</p>
+          <h2>프로젝트를 이해하고 있어요.</h2>
+          <p class="lead">코드 내용보다 먼저 구조와 작업 방법을 확인합니다.</p>
+          <div class="scan-card">
+            <div class="scan-row active"><span class="scan-dot">•</span><span>기술 스택과 빌드 시스템 확인</span></div>
+            <div class="scan-row"><span class="scan-dot"></span><span>모듈 구조와 의존 방향 분석</span></div>
+            <div class="scan-row"><span class="scan-dot"></span><span>테스트 위치와 실행 명령 탐색</span></div>
+            <div class="scan-row"><span class="scan-dot"></span><span>기존 AI 설정과 안전 규칙 확인</span></div>
+            <div class="progress-track"><div class="progress-bar"></div></div>
+            <div class="privacy-line">.env, 인증서, 키 저장소, 빌드 결과물은 분석에서 제외했습니다.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view hidden" data-view="diagnosis">
+        <div class="section-head">
+          <div><p class="eyebrow">AI readiness</p><h2>AI가 일하기엔 설명이 조금 부족해요.</h2><p class="lead">점수보다 중요한 것은 낮은 이유입니다. 모든 진단에 저장소 근거를 표시했어요.</p></div>
+          <button class="btn primary" type="button" data-go="problems">이 문제 개선하기</button>
+        </div>
+        <div class="diagnosis-grid">
+          <div class="score-column">
+            <div class="score-card card">
+              <div class="score-label">AI 협업 준비도</div>
+              <div class="score-number">38<span>/100</span></div>
+              <div class="score-status">개선이 필요해요</div>
+              <p class="score-caption">코드의 품질 점수가 아니라, AI에게 작업 방식을 얼마나 잘 설명하고 있는지 나타냅니다.</p>
+            </div>
+            <div class="dimension-card card">
+              <div class="dimension"><div class="dimension-head"><span>프로젝트 이해</span><strong>60</strong></div><div class="mini-track"><i style="width:60%"></i></div></div>
+              <div class="dimension"><div class="dimension-head"><span>아키텍처</span><strong>25</strong></div><div class="mini-track"><i style="width:25%"></i></div></div>
+              <div class="dimension"><div class="dimension-head"><span>테스트 및 검증</span><strong>35</strong></div><div class="mini-track"><i style="width:35%"></i></div></div>
+              <div class="dimension"><div class="dimension-head"><span>변경 안전성</span><strong>40</strong></div><div class="mini-track"><i style="width:40%"></i></div></div>
+            </div>
+          </div>
+          <div class="finding-list">
+            <article class="finding card"><span class="finding-index">01</span><div><h3>AI가 모듈별 역할을 알기 어려워요.</h3><p>app, domain, data 모듈은 발견했지만 각 모듈의 책임과 의존 규칙을 설명하는 문서가 없습니다.</p><span class="evidence">⌁ settings.gradle.kts</span></div><span class="confidence">높은 확신</span></article>
+            <article class="finding card"><span class="finding-index">02</span><div><h3>변경과 테스트가 연결되어 있지 않아요.</h3><p>테스트는 존재하지만 어떤 변경에 어떤 테스트를 실행해야 하는지 정의되어 있지 않습니다.</p><span class="evidence">⌁ app/src/test · domain/user/src/test</span></div><span class="confidence">높은 확신</span></article>
+            <article class="finding card"><span class="finding-index">03</span><div><h3>AI의 완료 조건이 없어요.</h3><p>구현 후 빌드, 테스트, Diff 확인을 완료 조건으로 지정한 프로젝트 지침을 찾지 못했습니다.</p><span class="evidence">⌁ AGENTS.md · CLAUDE.md 없음</span></div><span class="confidence">높은 확신</span></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="view hidden" data-view="problems">
+        <div class="section-head"><div><p class="eyebrow">Your pain points</p><h2>실제로 어떤 점이 불편한가요?</h2><p class="lead">분석 결과와 관련 있는 문제를 먼저 골라두었어요. 원하는 항목만 남겨주세요.</p></div></div>
+        <div class="choice-grid">
+          <button class="choice selected" type="button" aria-pressed="true"><span class="choice-check">✓</span><small>분석 결과 추천</small><strong>AI가 잘못된 모듈을 수정해요.</strong><p>모듈 역할과 의존 방향을 작업 전에 확인하게 합니다.</p></button>
+          <button class="choice selected" type="button" aria-pressed="true"><span class="choice-check">✓</span><small>분석 결과 추천</small><strong>구현 후 테스트를 자주 빠뜨려요.</strong><p>변경한 영역에 맞는 테스트와 완료 조건을 연결합니다.</p></button>
+          <button class="choice" type="button" aria-pressed="false"><span class="choice-check">✓</span><small>프로젝트 이해</small><strong>프로젝트 구조를 매번 설명해야 해요.</strong><p>새 대화에서도 공통 구조와 명령을 확인하게 합니다.</p></button>
+          <button class="choice" type="button" aria-pressed="false"><span class="choice-check">✓</span><small>안전</small><strong>관련 없는 파일까지 수정해요.</strong><p>작업 범위와 기존 변경을 보호하는 원칙을 추가합니다.</p></button>
+        </div>
+        <div class="sticky-action"><p><strong id="choice-count">2개 문제 선택</strong><br>지금 필요한 최소 설정을 추천합니다.</p><button class="btn primary" type="button" data-go="recommend">설정 추천받기</button></div>
+      </section>
+
+      <section class="view hidden" data-view="recommend">
+        <div class="section-head"><div><p class="eyebrow">Minimum setup</p><h2>이 프로젝트에는 3개면 충분해요.</h2><p class="lead">항상 필요한 원칙은 짧게, 반복 작업은 필요할 때만 불러오도록 나눴습니다.</p></div><button class="btn primary" type="button" data-go="review">설정 생성하기</button></div>
+        <div class="recommendations">
+          <article class="recommendation card"><span class="file-symbol">MD</span><div><h3>프로젝트 안내서</h3><p>프로젝트 구조, 주요 명령, 기본 안전 규칙을 모든 작업에서 확인합니다.</p><div class="rec-meta"><span class="rec-tag">AGENTS.md</span><span class="rec-tag">항상 적용</span><span class="rec-tag">근거 4개</span></div></div><span class="required">필수</span></article>
+          <article class="recommendation card"><span class="file-symbol">SK</span><div><h3>Clean Feature 구현 절차</h3><p>새 기능 작업에서 계층별 구현 순서와 금지된 의존성을 확인합니다.</p><div class="rec-meta"><span class="rec-tag">implement-clean-feature/SKILL.md</span><span class="rec-tag">기능 구현 시</span><span class="rec-tag">근거 3개</span></div></div><span class="required">필수</span></article>
+          <article class="recommendation card"><span class="file-symbol">SK</span><div><h3>변경 검증 절차</h3><p>수정한 모듈과 관련된 테스트를 찾고, 실행 결과를 명확하게 보고합니다.</p><div class="rec-meta"><span class="rec-tag">verify-change/SKILL.md</span><span class="rec-tag">코드 수정 후</span><span class="rec-tag">근거 5개</span></div></div><span class="required">필수</span></article>
+        </div>
+        <div class="budget card"><div><strong>설정 복잡도 · 적정</strong><p>항상 적용되는 규칙 11개 · 필요할 때 사용하는 Skill 2개 · 충돌 0개</p></div><span class="safe-badge">과도한 설정 없음</span></div>
+      </section>
+
+      <section class="view hidden" data-view="review">
+        <div class="section-head"><div><p class="eyebrow">Review changes</p><h2>만들 내용을 먼저 확인하세요.</h2><p class="lead">프로젝트 코드는 건드리지 않고 AI 설정 파일 4개만 추가합니다.</p></div><button class="btn primary" type="button" data-go="test">효과 검증하기</button></div>
+        <div class="workspace card">
+          <nav class="file-tree" aria-label="생성 파일">
+            <div class="tree-title">Generated files · 4</div>
+            <button class="tree-item active" type="button" data-file="agents">▾ AGENTS.md</button>
+            <button class="tree-item" type="button" data-file="architecture">▾ docs/ai/<br><span class="tree-indent">architecture.md</span></button>
+            <button class="tree-item" type="button" data-file="feature">▾ .agents/skills/<br><span class="tree-indent">implement-clean-feature/</span></button>
+            <button class="tree-item" type="button" data-file="verify">&nbsp;&nbsp;&nbsp;<span class="tree-indent">verify-change/</span></button>
+          </nav>
+          <div class="editor">
+            <div class="editor-top"><div class="tabs"><button class="tab active" type="button" data-tab="preview">내용</button><button class="tab" type="button" data-tab="diff">Diff</button><button class="tab" type="button" data-tab="reason">생성 근거</button></div><span class="file-reason">모든 작업에서 자동 확인</span></div>
+            <div class="editor-body"><pre id="editor-content"></pre></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view hidden" data-view="test">
+        <div class="section-head"><div><p class="eyebrow">Agent setup test</p><h2>설정이 AI의 행동을 바꿨을까요?</h2><p class="lead">같은 작업과 같은 기준으로 적용 전후의 작업 계획을 비교했습니다.</p></div><button class="btn primary" type="button" data-go="apply">검증된 설정 적용하기</button></div>
+        <div class="test-stage">
+          <div class="test-task"><small>테스트 작업</small>“사용자 프로필 조회 기능을 추가해 주세요.”</div>
+          <div class="comparison">
+            <div class="result-panel"><div class="result-kicker">설정 전</div><div class="result-score">42</div><ul class="result-list"><li><span class="bad-mark">×</span> app 모듈에 Repository 구현</li><li><span class="bad-mark">×</span> domain 계층 계획 없음</li><li><span class="bad-mark">×</span> 테스트 실행 계획 없음</li><li><span>△</span> 전체 빌드만 제안</li></ul></div>
+            <div class="comparison-arrow">→</div>
+            <div class="result-panel after"><div class="result-kicker">설정 후</div><div class="result-score good">89</div><ul class="result-list"><li><span class="good-mark">✓</span> domain에 인터페이스 작성</li><li><span class="good-mark">✓</span> data에 구현체 작성</li><li><span class="good-mark">✓</span> 관련 모듈 테스트 선택</li><li><span class="good-mark">✓</span> 변경 범위와 결과 보고</li></ul></div>
+          </div>
+          <div class="delta"><div class="delta-item"><span>모듈 선택</span><strong>+45</strong></div><div class="delta-item"><span>테스트 계획</span><strong>+65</strong></div><div class="delta-item"><span>범위 통제</span><strong>+35</strong></div><div class="delta-item"><span>안전성</span><strong>+40</strong></div></div>
+        </div>
+      </section>
+
+      <section class="view hidden" data-view="apply">
+        <div class="success">
+          <div class="success-mark">✓</div>
+          <p class="eyebrow">Ready to work</p>
+          <h2>AI의 첫 출근 준비가 끝났어요.</h2>
+          <p class="lead" style="margin-inline:auto">이제 긴 프로젝트 설명 대신, 구현하고 싶은 기능만 말해보세요.</p>
+          <div class="success-card card">
+            <h3>Git patch로 안전하게 적용</h3>
+            <p style="color:var(--muted);font-size:.85rem">먼저 충돌 여부를 확인한 뒤 같은 파일을 적용합니다.</p>
+            <div class="command">git apply --check agent-setup.patch<br>git apply agent-setup.patch</div>
+            <div class="safe-summary"><div>✓ 기존 소스 변경 없음</div><div>✓ AI 설정 파일 4개</div><div>✓ git diff로 전체 확인</div></div>
+          </div>
+          <div class="cta-row" style="justify-content:center;margin-top:20px"><button class="btn primary" type="button">Patch 다운로드</button><button class="btn secondary" type="button" data-go="start">처음부터 다시 보기</button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const order = ["start", "diagnosis", "problems", "recommend", "review", "test", "apply"];
+    const files = {
+      agents: {
+        preview: `# 프로젝트 작업 가이드\n\n## 프로젝트 구조\n\n- app: 애플리케이션 진입점과 의존성 조립\n- domain: 비즈니스 규칙과 인터페이스\n- data: Repository 구현과 외부 데이터 접근\n- presentation: Compose 화면과 UI 상태 관리\n\n## 작업 원칙\n\n- 요청한 기능과 직접 관련된 파일만 수정한다.\n- domain은 Android 프레임워크에 의존하지 않는다.\n- 기존 구현 패턴을 먼저 탐색하고 재사용한다.\n\n## 완료 조건\n\n- 변경한 모듈과 관련된 테스트를 실행한다.\n- 실행하지 못한 검증은 이유와 함께 명시한다.\n- 완료 전 git diff로 변경 범위를 확인한다.`,
+        diff: `<span class="diff-meta">@@ 새 파일: AGENTS.md @@</span>\n<span class="diff-add">+ # 프로젝트 작업 가이드</span>\n<span class="diff-add">+ </span>\n<span class="diff-add">+ ## 프로젝트 구조</span>\n<span class="diff-add">+ - app: 애플리케이션 진입점과 의존성 조립</span>\n<span class="diff-add">+ - domain: 비즈니스 규칙과 인터페이스</span>\n<span class="diff-add">+ - data: Repository 구현과 외부 데이터 접근</span>\n<span class="diff-add">+ </span>\n<span class="diff-add">+ ## 완료 조건</span>\n<span class="diff-add">+ - 관련 테스트를 실행한다.</span>\n<span class="diff-add">+ - 완료 전 변경 범위를 확인한다.</span>`,
+        reason: `생성 이유\n\nAI가 모든 작업에서 프로젝트 구조와 기본 완료 조건을 확인할 수 있는 공통 지침이 필요합니다.\n\n저장소 근거\n\n1. settings.gradle.kts에서 app, domain, data 모듈 발견\n2. app/src/test에서 단위 테스트 발견\n3. Gradle Wrapper에서 검증 명령 확인\n4. 기존 AGENTS.md와 CLAUDE.md가 없음\n\n확신도: 높음\n\n이 파일에는 항상 필요한 핵심 규칙만 포함했습니다. 상세한 구현 절차는 별도 Skill로 분리했습니다.`
+      },
+      architecture: { preview: `# 프로젝트 아키텍처\n\n## 의존 방향\n\npresentation → domain ← data\n\n## Domain\n- 순수 Kotlin 비즈니스 규칙을 포함한다.\n- Android 및 네트워크 구현에 의존하지 않는다.\n\n## Data\n- Domain에서 정의한 Repository 인터페이스를 구현한다.\n- 외부 모델을 Domain 모델로 변환한다.`, diff: `<span class="diff-meta">@@ 새 파일: docs/ai/architecture.md @@</span>\n<span class="diff-add">+ # 프로젝트 아키텍처</span>\n<span class="diff-add">+ presentation → domain ← data</span>`, reason: `모듈의 의존 방향을 여러 파일에서 추론할 수 있지만 한곳에 명시되어 있지 않아 참고 문서로 생성합니다.\n\n근거: settings.gradle.kts, 각 모듈의 build.gradle.kts` },
+      feature: { preview: `---\nname: implement-clean-feature\ndescription: 새 기능을 Clean Architecture 계층에 맞게 구현할 때 사용합니다.\n---\n\n# 기능 구현 절차\n\n1. 관련 기능의 기존 구현 패턴을 찾는다.\n2. Domain 모델과 인터페이스를 먼저 정의한다.\n3. Data 계층에 구현체를 작성한다.\n4. Presentation에서 유스케이스를 연결한다.\n5. 변경한 계층의 의존 방향을 확인한다.`, diff: `<span class="diff-meta">@@ 새 Skill @@</span>\n<span class="diff-add">+ name: implement-clean-feature</span>\n<span class="diff-add">+ description: 새 기능을 계층에 맞게 구현할 때 사용합니다.</span>`, reason: `새 기능 구현 때만 필요한 상세 절차이므로 항상 읽는 AGENTS.md 대신 Skill로 분리했습니다.` },
+      verify: { preview: `---\nname: verify-change\ndescription: 코드 변경을 완료하기 전에 관련 테스트와 변경 범위를 검증할 때 사용합니다.\n---\n\n# 변경 검증\n\n1. 수정한 파일이 속한 모듈을 확인한다.\n2. 가까운 테스트 파일을 탐색한다.\n3. 관련 모듈 테스트를 실행한다.\n4. 실패를 무시하거나 완료로 처리하지 않는다.\n5. 실행한 검증과 실행하지 못한 검증을 구분해 보고한다.`, diff: `<span class="diff-meta">@@ 새 Skill @@</span>\n<span class="diff-add">+ name: verify-change</span>\n<span class="diff-add">+ description: 완료 전 테스트와 범위를 검증합니다.</span>`, reason: `테스트 파일은 있지만 변경 유형과 테스트 명령이 연결되지 않아 반복 가능한 검증 Skill을 생성했습니다.` }
+    };
+    let currentFile = "agents";
+    let currentTab = "preview";
+
+    function showView(name) {
+      document.querySelectorAll("[data-view]").forEach(view => view.classList.toggle("hidden", view.dataset.view !== name));
+      const stepIndex = Math.min(order.indexOf(name), 5);
+      document.querySelectorAll(".step").forEach((step, index) => {
+        step.classList.toggle("active", index === stepIndex);
+        step.classList.toggle("done", index < stepIndex);
+        step.querySelector(".step-number").textContent = index < stepIndex ? "✓" : String(index + 1);
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function runAnalysis() {
+      showView("analysis");
+      const rows = [...document.querySelectorAll(".scan-row")];
+      const bar = document.querySelector(".progress-bar");
+      rows.forEach((row, index) => { row.classList.toggle("active", index === 0); row.classList.remove("done"); row.querySelector(".scan-dot").textContent = index === 0 ? "•" : ""; });
+      bar.style.width = "12%";
+      rows.forEach((row, index) => setTimeout(() => {
+        if (index > 0) { rows[index - 1].classList.remove("active"); rows[index - 1].classList.add("done"); rows[index - 1].querySelector(".scan-dot").textContent = "✓"; }
+        row.classList.add("active"); row.querySelector(".scan-dot").textContent = "•";
+        bar.style.width = `${25 * (index + 1)}%`;
+      }, index * 430));
+      setTimeout(() => {
+        rows.at(-1).classList.remove("active"); rows.at(-1).classList.add("done"); rows.at(-1).querySelector(".scan-dot").textContent = "✓";
+        showView("diagnosis");
+      }, 1900);
+    }
+
+    function updateEditor() {
+      const editor = document.querySelector("#editor-content");
+      const value = files[currentFile][currentTab];
+      if (currentTab === "diff") editor.innerHTML = value;
+      else editor.textContent = value;
+    }
+
+    document.querySelectorAll("[data-go]").forEach(button => button.addEventListener("click", () => showView(button.dataset.go)));
+    document.querySelectorAll("[data-analyze]").forEach(button => button.addEventListener("click", runAnalysis));
+    document.querySelector("[data-focus-repo]").addEventListener("click", () => { document.querySelector("#repo-input").focus(); document.querySelector("#connect-card").scrollIntoView({ behavior: "smooth", block: "center" }); });
+    document.querySelectorAll(".choice").forEach(choice => choice.addEventListener("click", () => {
+      choice.classList.toggle("selected");
+      choice.setAttribute("aria-pressed", choice.classList.contains("selected"));
+      const count = document.querySelectorAll(".choice.selected").length;
+      document.querySelector("#choice-count").textContent = `${count}개 문제 선택`;
+      document.querySelector('[data-go="recommend"]').disabled = count === 0;
+    }));
+    document.querySelectorAll("[data-file]").forEach(button => button.addEventListener("click", () => {
+      currentFile = button.dataset.file;
+      document.querySelectorAll("[data-file]").forEach(item => item.classList.toggle("active", item === button));
+      updateEditor();
+    }));
+    document.querySelectorAll("[data-tab]").forEach(button => button.addEventListener("click", () => {
+      currentTab = button.dataset.tab;
+      document.querySelectorAll("[data-tab]").forEach(item => item.classList.toggle("active", item === button));
+      updateEditor();
+    }));
+    updateEditor();
+  </script>
+</body>
+</html>
